@@ -38,6 +38,6 @@ Focus on serving your clients while we handle all your blockchain infrastructure
 
 About Polaris Django BPV
 -----------------
-Polaris is an extendable `django app`_ for Stellar Ecosystem Proposal (SEP) implementations maintained by the `Stellar Development Foundation`_ (SDF). Using Polaris, you can run a web server supporting any combination of SEP-1, 6, 10, 12, 24, 31, & 38.
+Polaris is an extendable `django app`_ for Stellar Ecosystem Proposal (SEP) implementations maintained by the `BP Ventures`_ (BPV). Using Polaris, you can run a web server supporting any combination of SEP-1, 6, 10, 12, 24, 31, & 38.
 
-See the complete `documentation`_ for information on how to get started with Polaris. The SDF also runs a `reference server`_ using Polaris that can be tested using our `demo wallet`_.
+See the complete `documentation`_ for information on how to get started with Polaris. The BPV also runs a `reference server`_ using Polaris that can be tested using our `demo wallet`_.
