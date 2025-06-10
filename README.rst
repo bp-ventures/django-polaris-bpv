@@ -1,7 +1,7 @@
 ==============
 Django Polaris BPV
 ==============
-> **Note**: This project was originally developed by Stellar Development Foundation and is now maintained by `BP Ventures <https://www.bpventures.us/>`_.
+**Note**: This project was originally developed by Stellar Development Foundation and is now maintained by `BP Ventures <https://www.bpventures.us/>`_.
 
 .. image:: https://img.shields.io/github/actions/workflow/status/stellar/django-polaris/test.yml?branch=master
     :alt: GitHub Workflow Status
@@ -36,6 +36,8 @@ Since 2020, BP Ventures has helped fintechs, banks, and charities with comprehen
 
 Focus on serving your clients while we handle all your blockchain infrastructure needs.
 
+About Polaris Django BPV
+-----------------
 Polaris is an extendable `django app`_ for Stellar Ecosystem Proposal (SEP) implementations maintained by the `Stellar Development Foundation`_ (SDF). Using Polaris, you can run a web server supporting any combination of SEP-1, 6, 10, 12, 24, 31, & 38.
 
 See the complete `documentation`_ for information on how to get started with Polaris. The SDF also runs a `reference server`_ using Polaris that can be tested using our `demo wallet`_.
