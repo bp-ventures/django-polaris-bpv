@@ -73,7 +73,7 @@ class CrossOriginMiddleware:
         
         # Use consistent URL matching with custom middleware
         if self.should_process_url(request.path):
-            # Use wildcard origin to ensure compatibility with demo-wallet
+            # Use wildcard origin to ensure compatibility
             response['Access-Control-Allow-Origin'] = '*'
             response['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
             response['Access-Control-Allow-Headers'] = 'Origin, Content-Type, Accept, Authorization'
