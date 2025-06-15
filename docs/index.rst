@@ -19,13 +19,13 @@ Django Polaris
     :target: https://pypi.python.org/pypi/django-polaris
 
 .. _`email list`: https://groups.google.com/g/stellar-polaris
-.. _Stellar Development Foundation: https://www.stellar.org/
+.. _BP Ventures: https://www.bpventures.us/
 .. _github: https://github.com/stellar/django-polaris
 .. _django app: https://docs.djangoproject.com/en/5.1/intro/reusable-apps/
 .. _`demo wallet`: http://demo-wallet.stellar.org
 
 Polaris is an extendable `django app`_ for Stellar Ecosystem Proposal (SEP) implementations
-maintained by the `Stellar Development Foundation`_ (SDF). Using Polaris, you can run a web
+maintained by `BP Ventures`_ (BPV). Using Polaris, you can run a web
 server supporting any combination of SEP-1, 6, 10, 12, 24, 31, & 38.
 
 While Polaris implements the majority of the functionality described in each SEP, there are
@@ -35,7 +35,7 @@ For example, only an anchor can implement the integration with their partner ban
 This is why each SEP implemented by Polaris comes with a programmable interface for developers
 to inject their own business logic.
 
-Polaris is completely open source and available on github_. The SDF also runs a reference
+Polaris is completely open source and available on github_. BPV also runs a reference
 server using Polaris that can be tested using our `demo wallet`_.
 
 For important updates on Polaris's development and releases please join the `email list`_.
