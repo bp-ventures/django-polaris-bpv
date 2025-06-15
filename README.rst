@@ -3,11 +3,11 @@ Django Polaris BPV
 ==============
 **Note**: This project was originally developed by Stellar Development Foundation and is now maintained by `BP Ventures <https://www.bpventures.us/>`_.
 
-.. image:: https://img.shields.io/github/actions/workflow/status/stellar/django-polaris/test.yml?branch=master
+.. image:: https://img.shields.io/github/actions/workflow/status/bp-ventures/django-polaris-bpv/test.yml?branch=master
     :alt: GitHub Workflow Status
     :target: https://github.com/bp-ventures/django-polaris-bpv/actions
 
-.. image:: https://codecov.io/gh/stellar/django-polaris/branch/master/graph/badge.svg?token=3DaW3jM6Q8
+.. image:: https://codecov.io/gh/bp-ventures/django-polaris-bpv/branch/master/graph/badge.svg
     :alt: Code Coverage
     :target: https://codecov.io/gh/stellar/django-polaris
 

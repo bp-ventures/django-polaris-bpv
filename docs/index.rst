@@ -1,5 +1,10 @@
 ==============
 Django Polaris
+
+.. note::
+
+   This project was originally developed by the Stellar Development Foundation (SDF).
+   It is now actively maintained by **BP Ventures (BPV)**.
 ==============
 
 .. image:: https://img.shields.io/github/actions/workflow/status/stellar/django-polaris/test.yml?branch=master
