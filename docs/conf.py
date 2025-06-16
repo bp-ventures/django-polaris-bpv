@@ -29,7 +29,7 @@ django.setup()
 
 # -- Project information -----------------------------------------------------
 
-project = "django-polaris"
+project = "django-polaris-bpv"
 copyright = "2019, Stellar Development Foundation"
 author = "Stellar Development Foundation"
 
@@ -148,6 +148,7 @@ latex_documents = [
         "django-polaris.tex",
         "django-polaris Documentation",
         "Jake Urban",
+        "BP Ventures",
         "manual",
     ),
 ]

@@ -33,12 +33,15 @@ Add Browser Session Support
 
 `SessionMiddleware`_ is required for all SEP-24 deployments. :class:`~polaris.middleware.TimeZoneMiddleware` is included in Polaris and ensures Django uses the correct timezone when rendering content to the user. If included, it must be added *after* ``SessionMiddleware``.
 
+:class:`~polaris.middleware.CrossOriginMiddleware` is included in Polaris to address cross-origin popup detection issues in Django 4.x applications. It adds necessary headers to ensure proper popup detection in client applications like the Stellar Demo Wallet. This middleware should be added *after* ``TimezoneMiddleware``.
+
 .. code-block:: python
 
     MIDDLEWARE = [
         ...,
         'django.contrib.sessions.middleware.SessionMiddleware',
         'polaris.middleware.TimezoneMiddleware',
+        'polaris.middleware.CrossOriginMiddleware',
         ...
     ]
 
