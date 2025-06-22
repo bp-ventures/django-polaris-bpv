@@ -23,7 +23,7 @@ Django Polaris BPV
 .. _django app: https://docs.djangoproject.com/en/3.0/intro/reusable-apps/
 .. _`demo wallet`: http://demo-wallet.stellar.org
 .. _`reference server`: https://testanchor.stellar.org/.well-known/stellar.toml
-.. _`documentation`: https://django-polaris.readthedocs.io/
+.. _`documentation`: https://django-polaris-bpv.readthedocs.io/
 
 
 About BP Ventures
