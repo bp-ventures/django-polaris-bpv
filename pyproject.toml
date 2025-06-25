@@ -3,15 +3,15 @@ requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
-name = "django-polaris"
-version = "2.6.0"
+name = "django-polaris-bpv"
+version = "2.7.0"
 description = "An extendable Django server for Stellar Ecosystem Proposals."
 license = "Apache-2.0"
-authors = ["Stellar Development Foundation <jake@stellar.org>"]
+authors = ["Stellar Development Foundation <jake@stellar.org>", "BPV Developers <github2@bpventures.us>"]
 readme = "README.rst"
-homepage = "https://github.com/stellar/django-polaris"
-repository = "https://github.com/stellar/django-polaris"
-documentation = "https://django-polaris.readthedocs.io/en/stable"
+homepage = "https://github.com/bp-ventures/django-polaris-bpv"
+repository = "https://github.com/bp-ventures/django-polaris-bpv"
+documentation = "https://django-polaris-bpv.readthedocs.io/en/latest/"
 keywords = ["stellar", "anchor", "polaris", "sep", "server"]
 classifiers = [
     "Environment :: Web Environment",
@@ -32,8 +32,8 @@ packages = [{ "include" = "polaris" }]
 exclude = ["**/*.scss", "**/tests/*"]
 
 [tool.poetry.urls]
-"Release Notes" = "https://github.com/stellar/django-polaris/releases"
-"Bug Tracker" = "https://github.com/stellar/django-polaris/issues"
+"Release Notes" = "https://github.com/bp-ventures/django-polaris-bpv/releases"
+"Bug Tracker" = "https://github.com/bp-ventures/django-polaris-bpv/issues"
 
 [tool.poetry.dependencies]
 python = "^3.10"
