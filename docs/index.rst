@@ -40,8 +40,7 @@ For example, only an anchor can implement the integration with their partner ban
 This is why each SEP implemented by Polaris comes with a programmable interface for developers
 to inject their own business logic.
 
-Polaris is completely open source and available on github_. BPV also runs a reference
-server using Polaris that can be tested using our `demo wallet`_.
+Polaris is completely open source and available on github_. You can test Polaris using our `demo wallet`_.
 
 For important updates on Polaris's development and releases please join the `email list`_.
 

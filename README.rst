@@ -22,7 +22,6 @@ Django Polaris BPV
 .. _github: https://github.com/bp-ventures/django-polaris-bpv
 .. _django app: https://docs.djangoproject.com/en/3.0/intro/reusable-apps/
 .. _`demo wallet`: http://demo-wallet.stellar.org
-.. _`reference server`: https://testanchor.stellar.org/.well-known/stellar.toml
 .. _`documentation`: https://django-polaris-bpv.readthedocs.io/
 .. _`BP Ventures`: https://www.bpventures.us/
 
@@ -40,4 +39,4 @@ About Polaris Django BPV
 -------------------------
 Polaris is an extendable `django app`_ for Stellar Ecosystem Proposal (SEP) implementations maintained by the `BP Ventures`_ (BPV). Using Polaris, you can run a web server supporting any combination of SEP-1, 6, 10, 12, 24, 31, & 38.
 
-See the complete `documentation`_ for information on how to get started with Polaris. The BPV also runs a `reference server`_ using Polaris that can be tested using our `demo wallet`_.
+See the complete `documentation`_ for information on how to get started with Polaris. You can test Polaris using our `demo wallet`_.
