@@ -105,7 +105,11 @@ Add the following to your settings.py as well:
 
     STATIC_URL = "<your static url path, /static/ by default>"
     STATIC_ROOT = os.path.join(BASE_DIR, "<where all static files will be collected>")
-    STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+    STORAGES = {
+        "staticfiles": {
+            "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        },
+    }
 
 Since ``whitenoise`` will now be serving your static files, use the ``--nostatic`` flag
 when using the ``runserver`` command locally.
