@@ -1,8 +1,8 @@
 import time
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 import jwt
-import pytz
 from jwt import InvalidTokenError, ExpiredSignatureError
 from urllib.parse import urlencode
 from typing import Callable, Dict, Optional
@@ -370,6 +370,6 @@ def interactive_url(
 
 def get_timezone_utc_offset(timezone) -> int:
     return round(
-        datetime.now().astimezone(pytz.timezone(timezone)).utcoffset().total_seconds()
+        datetime.now().astimezone(ZoneInfo(timezone)).utcoffset().total_seconds()
         / 60
     )

@@ -1,10 +1,11 @@
-import pytz
+from zoneinfo import ZoneInfo
+
 from django.utils import timezone
 
 
 class TimezoneMiddleware:
     """
-    .. _timezones: https://docs.djangoproject.com/en/3.2/topics/i18n/timezones/
+    .. _timezones: https://docs.djangoproject.com/en/stable/topics/i18n/timezones/
 
     Adapted from the Django documentation on timezones_. It checks for a
     ``"timezone"`` key stored in the request session and uses it when rendering
@@ -33,26 +34,33 @@ class TimezoneMiddleware:
     def __call__(self, request):
         tzname = request.session.get("timezone")
         if tzname:
-            timezone.activate(pytz.timezone(tzname))
+            timezone.activate(ZoneInfo(tzname))
         else:
             timezone.deactivate()
         return self.get_response(request)
 
 class CrossOriginMiddleware:
     """
-    Adds cross-origin headers to prevent popup detection issues
-    in client applications like the Stellar Demo Wallet when using Django 4.x.
-    
-    This middleware addresses changes in Django 4.x security handling that affect
-    how browsers manage cross-origin popup windows. It adds the necessary headers
-    to ensure proper popup detection without modifying transaction status flow.
-    
-    This should be added to your MIDDLEWARE setting after installing this fix.
+    Adds cross-origin headers to ensure proper popup detection in client
+    applications like the Stellar Demo Wallet.
+
+    When an anchor's interactive flow runs inside a popup opened by a
+    client wallet, browsers enforce cross-origin restrictions that can
+    prevent the client from detecting when the popup closes. This
+    middleware sets the necessary CORS and COOP/COEP headers on SEP
+    endpoint responses.
+
+    If the request includes an Origin header, that origin is reflected
+    back (required by the CORS spec when credentials are allowed).
+    Cookie SameSite attributes are set to None with Secure to enable
+    cross-origin cookie flow.
+
+    Add this middleware to MIDDLEWARE after TimezoneMiddleware.
     """
     
     # These URL patterns should match the ones in the custom middleware
     SEP24_URLS = [
-        '/sep31/'
+        '/sep31/',
         '/sep24/',
         '/sep6/',
         '/transactions/withdraw',
@@ -71,32 +79,25 @@ class CrossOriginMiddleware:
     def __call__(self, request):
         response = self.get_response(request)
         
-        # Use consistent URL matching with custom middleware
         if self.should_process_url(request.path):
-            # Use wildcard origin to ensure compatibility
-            response['Access-Control-Allow-Origin'] = '*'
+            origin = request.META.get('HTTP_ORIGIN')
+            if origin:
+                response['Access-Control-Allow-Origin'] = origin
+                response['Access-Control-Allow-Credentials'] = 'true'
+            else:
+                response['Access-Control-Allow-Origin'] = '*'
             response['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
             response['Access-Control-Allow-Headers'] = 'Origin, Content-Type, Accept, Authorization'
-            response['Access-Control-Allow-Credentials'] = 'true'
             response['Access-Control-Expose-Headers'] = 'Content-Type, X-Requested-With'
             response['Cross-Origin-Embedder-Policy'] = 'unsafe-none'
             response['Cross-Origin-Opener-Policy'] = 'unsafe-none'
             response['Cross-Origin-Resource-Policy'] = 'cross-origin'
             response['Vary'] = 'Origin'
 
-            # Django 4.x specific cookie handling
-            if 'Set-Cookie' in response:
-                cookies = response['Set-Cookie'].split(',')
-                modified_cookies = []
-                for cookie in cookies:
-                    if 'SameSite' in cookie:
-                        cookie = cookie.replace('SameSite=Lax', 'SameSite=None; Secure')
-                    else:
-                        cookie += '; SameSite=None; Secure'
-                modified_cookies.append(cookie)
-                response['Set-Cookie'] = ','.join(modified_cookies)
-            
-            # Cache control and other headers
+            for cookie_name in list(response.cookies.keys()):
+                response.cookies[cookie_name]['samesite'] = 'None'
+                response.cookies[cookie_name]['secure'] = True
+
             response['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
             response['Pragma'] = 'no-cache'
             response['Expires'] = '0'

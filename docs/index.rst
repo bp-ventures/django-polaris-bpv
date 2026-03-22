@@ -7,13 +7,13 @@ Django Polaris
    It is now actively maintained by **BP Ventures (BPV)**.
 ==============
 
-.. image:: https://img.shields.io/github/actions/workflow/status/stellar/django-polaris/test.yml?branch=master
+.. image:: https://img.shields.io/github/actions/workflow/status/bp-ventures/django-polaris-bpv/test.yml?branch=master
     :alt: GitHub Workflow Status
-    :target: https://github.com/stellar/django-polaris/actions
+    :target: https://github.com/bp-ventures/django-polaris-bpv/actions
 
-.. image:: https://codecov.io/gh/stellar/django-polaris/branch/master/graph/badge.svg?token=3DaW3jM6Q8
+.. image:: https://codecov.io/gh/bp-ventures/django-polaris-bpv/branch/master/graph/badge.svg
     :alt: Code Coverage
-    :target: https://codecov.io/gh/stellar/django-polaris
+    :target: https://codecov.io/gh/bp-ventures/django-polaris-bpv
 
 .. image:: https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue?style=shield
     :alt: Python - Version
@@ -25,8 +25,8 @@ Django Polaris
 
 .. _`email list`: https://groups.google.com/g/stellar-polaris
 .. _BP Ventures: https://www.bpventures.us/
-.. _github: https://github.com/stellar/django-polaris
-.. _django app: https://docs.djangoproject.com/en/5.1/intro/reusable-apps/
+.. _github: https://github.com/bp-ventures/django-polaris-bpv
+.. _django app: https://docs.djangoproject.com/en/stable/intro/reusable-apps/
 .. _`demo wallet`: http://demo-wallet.stellar.org
 
 Polaris is an extendable `django app`_ for Stellar Ecosystem Proposal (SEP) implementations

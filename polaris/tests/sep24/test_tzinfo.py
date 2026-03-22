@@ -2,7 +2,7 @@ from uuid import uuid4
 from datetime import datetime, timedelta, timezone
 
 import pytest
-import pytz
+from zoneinfo import ZoneInfo
 from django.urls import reverse
 from django.contrib.sessions.models import Session
 
@@ -29,7 +29,7 @@ def test_successful_post(client):
     tz = session.get_decoded().get("timezone")
     assert tz
     assert datetime.now(timezone.utc).astimezone(
-        pytz.timezone(tz)
+        ZoneInfo(tz)
     ).utcoffset() == timedelta(minutes=0)
 
 
