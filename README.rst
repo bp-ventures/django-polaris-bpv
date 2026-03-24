@@ -9,18 +9,18 @@ Django Polaris BPV
 
 .. image:: https://codecov.io/gh/bp-ventures/django-polaris-bpv/branch/master/graph/badge.svg
     :alt: Code Coverage
-    :target: https://codecov.io/gh/stellar/django-polaris
+    :target: https://codecov.io/gh/bp-ventures/django-polaris-bpv
 
-.. image:: https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue?style=shield
+.. image:: https://img.shields.io/badge/python-3.12%20%7C%203.13-blue?style=shield
     :alt: Python - Version
     :target: https://pypi.python.org/pypi/django-polaris
 
-.. image:: https://img.shields.io/badge/django-%3E=4.2-blue?style=shield
+.. image:: https://img.shields.io/badge/django-%3E=6.0-blue?style=shield
     :alt: Django - Version
     :target: https://pypi.python.org/pypi/django-polaris
 
 .. _github: https://github.com/bp-ventures/django-polaris-bpv
-.. _django app: https://docs.djangoproject.com/en/3.0/intro/reusable-apps/
+.. _django app: https://docs.djangoproject.com/en/stable/intro/reusable-apps/
 .. _`demo wallet`: http://demo-wallet.stellar.org
 .. _`reference server`: https://testanchor.stellar.org/.well-known/stellar.toml
 .. _`documentation`: https://django-polaris-bpv.readthedocs.io/

@@ -9,7 +9,7 @@ First you need to install the django and polaris python packages.
 
 .. code-block:: shell
 
-    pip install django django-polaris
+    pip install django django-polaris-bpv
 
 Then you can create a project template using the following command.
 
@@ -100,7 +100,7 @@ Configure the Database
 ======================
 
 .. _Fernet symmetric encryption: https://cryptography.io/en/latest/fernet/
-.. _`supported by Django`: https://docs.djangoproject.com/en/5.1/ref/databases/
+.. _`supported by Django`: https://docs.djangoproject.com/en/stable/ref/databases/
 .. _`SQLite3`: https://www.sqlite.org/index.html
 
 Polaris works with all databases `supported by Django`_. Django's template code uses `SQLite3`_ by default, but you can install your database driver of choice and update the ``DATABASES`` setting appropriately if you'd like.

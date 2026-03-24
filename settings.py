@@ -90,7 +90,6 @@ DEFAULT_AUTO_FIELD = "django.db.models.AutoField"
 
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = "America/Los_Angeles"
-USE_I18N = True
 USE_TZ = True
 USE_THOUSAND_SEPARATOR = True
 LANGUAGES = [
