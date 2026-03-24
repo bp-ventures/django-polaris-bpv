@@ -1,14 +1,11 @@
 from unittest.mock import patch, Mock
 
-import pytest
-
 from polaris.tests.helpers import mock_check_auth_success
 
 INFO_ENDPOINT = "/sep58/info"
 code_path = "polaris.sep58.info"
 
 
-# --- 6.2 test_info_returns_offerings ---
 @patch(f"{code_path}.eai")
 def test_info_returns_offerings(mock_eai, client):
     mock_eai.get_offerings = Mock(return_value=[
@@ -23,7 +20,6 @@ def test_info_returns_offerings(mock_eai, client):
     mock_eai.get_offerings.assert_called_once()
 
 
-# --- 6.3 test_info_no_auth_required ---
 @patch(f"{code_path}.eai")
 def test_info_no_auth_required(mock_eai, client):
     """No token provided — should still return 200, not 403."""
@@ -32,7 +28,6 @@ def test_info_no_auth_required(mock_eai, client):
     assert response.status_code == 200
 
 
-# --- 6.39 test_info_crypto_address_offering_valid ---
 @patch(f"{code_path}.eai")
 def test_info_crypto_address_offering_valid(mock_eai, client):
     mock_eai.get_offerings = Mock(return_value=[
@@ -42,7 +37,6 @@ def test_info_crypto_address_offering_valid(mock_eai, client):
     assert response.status_code == 200
 
 
-# --- 6.40 test_info_virtual_account_offering_valid ---
 @patch(f"{code_path}.eai")
 def test_info_virtual_account_offering_valid(mock_eai, client):
     mock_eai.get_offerings = Mock(return_value=[
@@ -52,7 +46,6 @@ def test_info_virtual_account_offering_valid(mock_eai, client):
     assert response.status_code == 200
 
 
-# --- 6.41 test_info_bank_account_offering_valid ---
 @patch(f"{code_path}.eai")
 def test_info_bank_account_offering_valid(mock_eai, client):
     mock_eai.get_offerings = Mock(return_value=[
@@ -62,7 +55,6 @@ def test_info_bank_account_offering_valid(mock_eai, client):
     assert response.status_code == 200
 
 
-# --- 6.42 test_info_offering_missing_kind_500 ---
 @patch(f"{code_path}.eai")
 def test_info_offering_missing_kind_500(mock_eai, client):
     mock_eai.get_offerings = Mock(return_value=[{"country_code": "US"}])
@@ -70,7 +62,6 @@ def test_info_offering_missing_kind_500(mock_eai, client):
     assert response.status_code == 500
 
 
-# --- 6.43 test_info_crypto_offering_missing_chain_id_500 ---
 @patch(f"{code_path}.eai")
 def test_info_crypto_offering_missing_chain_id_500(mock_eai, client):
     mock_eai.get_offerings = Mock(return_value=[
@@ -80,7 +71,6 @@ def test_info_crypto_offering_missing_chain_id_500(mock_eai, client):
     assert response.status_code == 500
 
 
-# --- 6.44 test_info_virtual_account_offering_missing_currency_500 ---
 @patch(f"{code_path}.eai")
 def test_info_virtual_account_offering_missing_currency_500(mock_eai, client):
     mock_eai.get_offerings = Mock(return_value=[
@@ -90,7 +80,6 @@ def test_info_virtual_account_offering_missing_currency_500(mock_eai, client):
     assert response.status_code == 500
 
 
-# --- 6.45 test_info_bank_account_offering_missing_rail_500 ---
 @patch(f"{code_path}.eai")
 def test_info_bank_account_offering_missing_rail_500(mock_eai, client):
     mock_eai.get_offerings = Mock(return_value=[

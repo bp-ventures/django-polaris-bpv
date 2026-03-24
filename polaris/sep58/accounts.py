@@ -9,11 +9,10 @@ from rest_framework.response import Response
 from polaris.integrations import registered_external_account_integration as eai
 from polaris.sep10.token import SEP10Token
 from polaris.sep10.utils import validate_sep10_token
+from polaris.sep58 import VALID_KINDS, VALID_STATUSES, validate_kind_fields
 from polaris.utils import render_error_response
 
 logger = getLogger(__name__)
-
-VALID_KINDS = ("crypto_address", "virtual_account", "bank_account")
 
 
 @api_view(["GET", "POST"])
@@ -104,16 +103,9 @@ def _validate_account_response(account: dict, context: str = ""):
         raise ValueError(f"account missing required fields: {', '.join(missing)}{context}")
     if account["kind"] not in VALID_KINDS:
         raise ValueError(f"invalid account kind: {account['kind']}{context}")
-    if account["status"] not in ("pending", "active", "deactivated", "error"):
+    if account["status"] not in VALID_STATUSES:
         raise ValueError(f"invalid account status: {account['status']}{context}")
-    if account["kind"] in ("virtual_account", "bank_account"):
-        for f in ("country_code", "currency", "rail"):
-            if f not in account:
-                raise ValueError(f"account kind={account['kind']} missing '{f}'{context}")
-    elif account["kind"] == "crypto_address":
-        for f in ("chain_id", "network"):
-            if f not in account:
-                raise ValueError(f"account kind=crypto_address missing '{f}'{context}")
+    validate_kind_fields(account, account["kind"], context)
     if account["status"] == "active" and "instructions" not in account:
         raise ValueError(f"active account must include 'instructions'{context}")
 

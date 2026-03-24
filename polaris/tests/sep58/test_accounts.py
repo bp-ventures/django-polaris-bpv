@@ -1,14 +1,11 @@
 import json
+from copy import deepcopy
 from unittest.mock import patch, Mock
-
-import pytest
 
 from polaris.tests.helpers import mock_check_auth_success
 
 ACCOUNTS_ENDPOINT = "/sep58/accounts"
 code_path = "polaris.sep58.accounts"
-
-# --- Shared fixtures ---
 
 VALID_CRYPTO_ADDRESS = {
     "id": "acc_crypto_1", "kind": "crypto_address", "status": "active",
@@ -39,11 +36,21 @@ def _post(client, data):
     return client.post(ACCOUNTS_ENDPOINT, json.dumps(data), content_type="application/json")
 
 
+def _make_invalid_account(**overrides):
+    """Deep-copy a valid crypto_address and apply overrides / removals."""
+    base = deepcopy(VALID_CRYPTO_ADDRESS)
+    for key, val in overrides.items():
+        if val is None:
+            base.pop(key, None)
+        else:
+            base[key] = val
+    return base
+
+
 # ============================================================
 # POST /accounts — request validation (AC1)
 # ============================================================
 
-# --- 6.4 ---
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
 def test_create_account_missing_kind_400(client):
     response = _post(client, {})
@@ -51,7 +58,6 @@ def test_create_account_missing_kind_400(client):
     assert "kind" in response.json()["error"].lower()
 
 
-# --- 6.5 ---
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
 def test_create_account_invalid_kind_400(client):
     response = _post(client, {"kind": "invalid"})
@@ -59,7 +65,6 @@ def test_create_account_invalid_kind_400(client):
     assert "must be one of" in response.json()["error"]
 
 
-# --- 6.6 ---
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
 def test_create_account_virtual_account_missing_country_code_400(client):
     response = _post(client, {"kind": "virtual_account", "currency": "USD"})
@@ -67,7 +72,6 @@ def test_create_account_virtual_account_missing_country_code_400(client):
     assert "country_code" in response.json()["error"]
 
 
-# --- 6.7 ---
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
 def test_create_account_virtual_account_missing_currency_400(client):
     response = _post(client, {"kind": "virtual_account", "country_code": "US"})
@@ -75,7 +79,6 @@ def test_create_account_virtual_account_missing_currency_400(client):
     assert "currency" in response.json()["error"]
 
 
-# --- 6.8 ---
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
 def test_create_account_bank_account_missing_country_code_400(client):
     response = _post(client, {"kind": "bank_account", "currency": "MXN"})
@@ -83,7 +86,6 @@ def test_create_account_bank_account_missing_country_code_400(client):
     assert "country_code" in response.json()["error"]
 
 
-# --- 6.9 ---
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
 def test_create_account_bank_account_missing_currency_400(client):
     response = _post(client, {"kind": "bank_account", "country_code": "MX"})
@@ -91,7 +93,6 @@ def test_create_account_bank_account_missing_currency_400(client):
     assert "currency" in response.json()["error"]
 
 
-# --- 6.10 ---
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
 def test_create_account_crypto_address_missing_chain_id_400(client):
     response = _post(client, {"kind": "crypto_address"})
@@ -99,7 +100,6 @@ def test_create_account_crypto_address_missing_chain_id_400(client):
     assert "chain_id" in response.json()["error"]
 
 
-# --- 6.11 ---
 @patch(f"{code_path}.eai")
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
 def test_create_account_non_https_callback_400(mock_eai, client):
@@ -111,11 +111,10 @@ def test_create_account_non_https_callback_400(mock_eai, client):
     assert "HTTPS" in response.json()["error"]
 
 
-# --- 6.12 ---
 @patch(f"{code_path}.eai")
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
 def test_create_account_https_callback_passthrough(mock_eai, client):
-    mock_eai.create_account = Mock(return_value=(VALID_CRYPTO_ADDRESS, True))
+    mock_eai.create_account = Mock(return_value=(deepcopy(VALID_CRYPTO_ADDRESS), True))
     response = _post(client, {
         "kind": "crypto_address", "chain_id": "eip155:1",
         "on_change_callback": "https://example.com/hook",
@@ -129,7 +128,6 @@ def test_create_account_https_callback_passthrough(mock_eai, client):
 # POST /accounts — integration error conventions (AC2)
 # ============================================================
 
-# --- 6.13 ---
 @patch(f"{code_path}.eai")
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
 def test_create_account_value_error_400(mock_eai, client):
@@ -138,7 +136,6 @@ def test_create_account_value_error_400(mock_eai, client):
     assert response.status_code == 400
 
 
-# --- 6.14 ---
 @patch(f"{code_path}.eai")
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
 def test_create_account_runtime_error_503(mock_eai, client):
@@ -147,7 +144,6 @@ def test_create_account_runtime_error_503(mock_eai, client):
     assert response.status_code == 503
 
 
-# --- 6.15 ---
 @patch(f"{code_path}.eai")
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
 def test_create_account_kyc_403(mock_eai, client):
@@ -164,11 +160,10 @@ def test_create_account_kyc_403(mock_eai, client):
 # POST /accounts — per-kind valid response shapes (AC3)
 # ============================================================
 
-# --- 6.16 ---
 @patch(f"{code_path}.eai")
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
 def test_create_crypto_address_success_201(mock_eai, client):
-    mock_eai.create_account = Mock(return_value=(VALID_CRYPTO_ADDRESS, True))
+    mock_eai.create_account = Mock(return_value=(deepcopy(VALID_CRYPTO_ADDRESS), True))
     response = _post(client, {"kind": "crypto_address", "chain_id": "eip155:1"})
     assert response.status_code == 201
     account = response.json()["account"]
@@ -177,11 +172,10 @@ def test_create_crypto_address_success_201(mock_eai, client):
     assert "network" in account
 
 
-# --- 6.17 ---
 @patch(f"{code_path}.eai")
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
 def test_create_virtual_account_success_201(mock_eai, client):
-    mock_eai.create_account = Mock(return_value=(VALID_VIRTUAL_ACCOUNT, True))
+    mock_eai.create_account = Mock(return_value=(deepcopy(VALID_VIRTUAL_ACCOUNT), True))
     response = _post(client, {"kind": "virtual_account", "country_code": "US", "currency": "USD"})
     assert response.status_code == 201
     account = response.json()["account"]
@@ -191,11 +185,10 @@ def test_create_virtual_account_success_201(mock_eai, client):
     assert "rail" in account
 
 
-# --- 6.18 ---
 @patch(f"{code_path}.eai")
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
 def test_create_bank_account_success_201(mock_eai, client):
-    mock_eai.create_account = Mock(return_value=(VALID_BANK_ACCOUNT, True))
+    mock_eai.create_account = Mock(return_value=(deepcopy(VALID_BANK_ACCOUNT), True))
     response = _post(client, {"kind": "bank_account", "country_code": "MX", "currency": "MXN"})
     assert response.status_code == 201
     account = response.json()["account"]
@@ -205,11 +198,10 @@ def test_create_bank_account_success_201(mock_eai, client):
     assert "rail" in account
 
 
-# --- 6.19 ---
 @patch(f"{code_path}.eai")
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
 def test_create_account_existing_200(mock_eai, client):
-    mock_eai.create_account = Mock(return_value=(VALID_CRYPTO_ADDRESS, False))
+    mock_eai.create_account = Mock(return_value=(deepcopy(VALID_CRYPTO_ADDRESS), False))
     response = _post(client, {"kind": "crypto_address", "chain_id": "eip155:1"})
     assert response.status_code == 200
 
@@ -218,18 +210,6 @@ def test_create_account_existing_200(mock_eai, client):
 # POST /accounts — per-kind invalid response shapes (AC3)
 # ============================================================
 
-def _make_invalid_account(**overrides):
-    """Start from a valid crypto_address and apply overrides / removals."""
-    base = dict(VALID_CRYPTO_ADDRESS)
-    for key, val in overrides.items():
-        if val is None:
-            base.pop(key, None)
-        else:
-            base[key] = val
-    return base
-
-
-# --- 6.20 ---
 @patch(f"{code_path}.eai")
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
 def test_create_crypto_address_missing_chain_id_500(mock_eai, client):
@@ -239,7 +219,6 @@ def test_create_crypto_address_missing_chain_id_500(mock_eai, client):
     assert response.status_code == 500
 
 
-# --- 6.21 ---
 @patch(f"{code_path}.eai")
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
 def test_create_crypto_address_missing_network_500(mock_eai, client):
@@ -249,51 +228,46 @@ def test_create_crypto_address_missing_network_500(mock_eai, client):
     assert response.status_code == 500
 
 
-# --- 6.22 ---
 @patch(f"{code_path}.eai")
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
 def test_create_virtual_account_missing_country_code_500(mock_eai, client):
-    bad = dict(VALID_VIRTUAL_ACCOUNT)
+    bad = deepcopy(VALID_VIRTUAL_ACCOUNT)
     del bad["country_code"]
     mock_eai.create_account = Mock(return_value=(bad, True))
     response = _post(client, {"kind": "virtual_account", "country_code": "US", "currency": "USD"})
     assert response.status_code == 500
 
 
-# --- 6.23 ---
 @patch(f"{code_path}.eai")
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
 def test_create_virtual_account_missing_currency_500(mock_eai, client):
-    bad = dict(VALID_VIRTUAL_ACCOUNT)
+    bad = deepcopy(VALID_VIRTUAL_ACCOUNT)
     del bad["currency"]
     mock_eai.create_account = Mock(return_value=(bad, True))
     response = _post(client, {"kind": "virtual_account", "country_code": "US", "currency": "USD"})
     assert response.status_code == 500
 
 
-# --- 6.24 ---
 @patch(f"{code_path}.eai")
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
 def test_create_virtual_account_missing_rail_500(mock_eai, client):
-    bad = dict(VALID_VIRTUAL_ACCOUNT)
+    bad = deepcopy(VALID_VIRTUAL_ACCOUNT)
     del bad["rail"]
     mock_eai.create_account = Mock(return_value=(bad, True))
     response = _post(client, {"kind": "virtual_account", "country_code": "US", "currency": "USD"})
     assert response.status_code == 500
 
 
-# --- 6.25 ---
 @patch(f"{code_path}.eai")
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
 def test_create_bank_account_missing_rail_500(mock_eai, client):
-    bad = dict(VALID_BANK_ACCOUNT)
+    bad = deepcopy(VALID_BANK_ACCOUNT)
     del bad["rail"]
     mock_eai.create_account = Mock(return_value=(bad, True))
     response = _post(client, {"kind": "bank_account", "country_code": "MX", "currency": "MXN"})
     assert response.status_code == 500
 
 
-# --- 6.26 ---
 @patch(f"{code_path}.eai")
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
 def test_create_active_account_missing_instructions_500(mock_eai, client):
@@ -303,7 +277,6 @@ def test_create_active_account_missing_instructions_500(mock_eai, client):
     assert response.status_code == 500
 
 
-# --- 6.27 ---
 @patch(f"{code_path}.eai")
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
 def test_create_account_missing_common_fields_500(mock_eai, client):
@@ -313,7 +286,6 @@ def test_create_account_missing_common_fields_500(mock_eai, client):
     assert response.status_code == 500
 
 
-# --- 6.28 ---
 @patch(f"{code_path}.eai")
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
 def test_create_account_invalid_status_500(mock_eai, client):
@@ -327,17 +299,15 @@ def test_create_account_invalid_status_500(mock_eai, client):
 # GET /accounts/:id (AC1 + AC2)
 # ============================================================
 
-# --- 6.29 ---
 @patch(f"{code_path}.eai")
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
 def test_get_account_success(mock_eai, client):
-    mock_eai.get_account = Mock(return_value=VALID_CRYPTO_ADDRESS)
+    mock_eai.get_account = Mock(return_value=deepcopy(VALID_CRYPTO_ADDRESS))
     response = client.get(f"{ACCOUNTS_ENDPOINT}/acc_crypto_1")
     assert response.status_code == 200
     assert response.json()["account"]["id"] == "acc_crypto_1"
 
 
-# --- 6.30 ---
 @patch(f"{code_path}.eai")
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
 def test_get_account_not_found_404(mock_eai, client):
@@ -346,7 +316,6 @@ def test_get_account_not_found_404(mock_eai, client):
     assert response.status_code == 404
 
 
-# --- 6.31 ---
 @patch(f"{code_path}.eai")
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
 def test_get_account_runtime_error_503(mock_eai, client):
@@ -355,7 +324,6 @@ def test_get_account_runtime_error_503(mock_eai, client):
     assert response.status_code == 503
 
 
-# --- 6.32 ---
 @patch(f"{code_path}.eai")
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
 def test_get_account_validation_failure_500(mock_eai, client):
@@ -368,29 +336,26 @@ def test_get_account_validation_failure_500(mock_eai, client):
 # GET /accounts — success + errors (AC1 + AC2)
 # ============================================================
 
-# --- 6.33 ---
 @patch(f"{code_path}.eai")
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
 def test_list_accounts_success(mock_eai, client):
-    mock_eai.list_accounts = Mock(return_value=[VALID_CRYPTO_ADDRESS, VALID_VIRTUAL_ACCOUNT])
+    mock_eai.list_accounts = Mock(return_value=[deepcopy(VALID_CRYPTO_ADDRESS), deepcopy(VALID_VIRTUAL_ACCOUNT)])
     response = client.get(ACCOUNTS_ENDPOINT)
     assert response.status_code == 200
     body = response.json()
     assert len(body["accounts"]) == 2
 
 
-# --- 6.34 ---
 @patch(f"{code_path}.eai")
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
 def test_list_accounts_with_filters(mock_eai, client):
-    mock_eai.list_accounts = Mock(return_value=[VALID_CRYPTO_ADDRESS])
+    mock_eai.list_accounts = Mock(return_value=[deepcopy(VALID_CRYPTO_ADDRESS)])
     response = client.get(ACCOUNTS_ENDPOINT, {"kind": "crypto_address", "status": "active"})
     assert response.status_code == 200
     call_kwargs = mock_eai.list_accounts.call_args[1]
     assert call_kwargs["filters"] == {"kind": "crypto_address", "status": "active"}
 
 
-# --- 6.35 ---
 @patch(f"{code_path}.eai")
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
 def test_list_accounts_value_error_400(mock_eai, client):
@@ -399,7 +364,6 @@ def test_list_accounts_value_error_400(mock_eai, client):
     assert response.status_code == 400
 
 
-# --- 6.36 ---
 @patch(f"{code_path}.eai")
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
 def test_list_accounts_runtime_error_503(mock_eai, client):
@@ -412,7 +376,6 @@ def test_list_accounts_runtime_error_503(mock_eai, client):
 # GET /accounts — list-level response validation (AC2 + AC3)
 # ============================================================
 
-# --- 6.37 ---
 @patch(f"{code_path}.eai")
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
 def test_list_accounts_malformed_item_500(mock_eai, client):
@@ -421,11 +384,10 @@ def test_list_accounts_malformed_item_500(mock_eai, client):
     assert response.status_code == 500
 
 
-# --- 6.38 ---
 @patch(f"{code_path}.eai")
 @patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
 def test_list_accounts_mixed_kinds_valid(mock_eai, client):
-    mock_eai.list_accounts = Mock(return_value=[VALID_CRYPTO_ADDRESS, VALID_VIRTUAL_ACCOUNT, VALID_BANK_ACCOUNT])
+    mock_eai.list_accounts = Mock(return_value=[deepcopy(VALID_CRYPTO_ADDRESS), deepcopy(VALID_VIRTUAL_ACCOUNT), deepcopy(VALID_BANK_ACCOUNT)])
     response = client.get(ACCOUNTS_ENDPOINT)
     assert response.status_code == 200
     assert len(response.json()["accounts"]) == 3
@@ -435,17 +397,13 @@ def test_list_accounts_mixed_kinds_valid(mock_eai, client):
 # Auth (AC1)
 # ============================================================
 
-# --- 6.46 ---
 def test_accounts_requires_auth(client):
     """POST, GET /accounts, and GET /accounts/:id without token should 403."""
-    # POST /accounts
     response = _post(client, {"kind": "crypto_address", "chain_id": "eip155:1"})
     assert response.status_code == 403
 
-    # GET /accounts
     response = client.get(ACCOUNTS_ENDPOINT)
     assert response.status_code == 403
 
-    # GET /accounts/:id
     response = client.get(f"{ACCOUNTS_ENDPOINT}/some_id")
     assert response.status_code == 403

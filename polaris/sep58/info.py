@@ -6,11 +6,10 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 
 from polaris.integrations import registered_external_account_integration as eai
+from polaris.sep58 import VALID_KINDS, validate_kind_fields
 from polaris.utils import render_error_response
 
 logger = getLogger(__name__)
-
-VALID_KINDS = ("crypto_address", "virtual_account", "bank_account")
 
 
 @api_view(["GET"])
@@ -35,11 +34,4 @@ def _validate_offering(offering: dict, context: str = ""):
     kind = offering["kind"]
     if kind not in VALID_KINDS:
         raise ValueError(f"invalid offering kind: {kind}{context}")
-    if kind in ("virtual_account", "bank_account"):
-        for f in ("country_code", "currency", "rail"):
-            if f not in offering:
-                raise ValueError(f"offering kind={kind} missing '{f}'{context}")
-    elif kind == "crypto_address":
-        for f in ("chain_id", "network"):
-            if f not in offering:
-                raise ValueError(f"offering kind=crypto_address missing '{f}'{context}")
+    validate_kind_fields(offering, kind, context)
