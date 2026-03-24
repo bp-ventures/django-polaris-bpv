@@ -84,6 +84,8 @@ def generate_toml(request: Request) -> Response:
         toml_dict["DIRECT_PAYMENT_SERVER"] = os.path.join(settings.HOST_URL, "sep31")
     if "sep-38" in settings.ACTIVE_SEPS:
         toml_dict["ANCHOR_QUOTE_SERVER"] = os.path.join(settings.HOST_URL, "sep38")
+    if "sep-58" in settings.ACTIVE_SEPS:
+        toml_dict["EXTERNAL_ACCOUNT_SERVER"] = os.path.join(settings.HOST_URL, "sep58")
 
     toml_dict.update(registered_toml_func(request))
     content = toml.dumps(toml_dict)
