@@ -457,6 +457,78 @@ def test_get_client_attribution_invalid_signing_key(mock_fetch_stellar_toml, cli
     assert content["error"] == "invalid SIGNING_KEY value on 'client_domain' TOML"
 
 
+def test_post_transaction_not_provided(client):
+    """POST /auth without 'transaction' field returns 400."""
+    response = client.post(AUTH_PATH, {})
+    content = response.json()
+    assert response.status_code == 400, json.dumps(content, indent=2)
+    assert content["error"] == "'transaction' is required"
+
+
+def test_post_transaction_empty_string(client):
+    """POST /auth with empty string 'transaction' returns 400."""
+    response = client.post(AUTH_PATH, {"transaction": ""})
+    content = response.json()
+    assert response.status_code == 400, json.dumps(content, indent=2)
+    assert content["error"] == "'transaction' is required"
+
+
+def test_post_transaction_must_be_string_dict(client):
+    """POST /auth with dict 'transaction' value returns 400, not 500."""
+    response = client.post(
+        AUTH_PATH,
+        json.dumps({"transaction": {"not a transaction string": True}}),
+        content_type="application/json",
+    )
+    content = response.json()
+    assert response.status_code == 400, json.dumps(content, indent=2)
+    assert content["error"] == "'transaction' must be a string"
+
+
+def test_post_transaction_must_be_string_list(client):
+    """POST /auth with list 'transaction' value returns 400, not 500."""
+    response = client.post(
+        AUTH_PATH,
+        json.dumps({"transaction": [1, 2, 3]}),
+        content_type="application/json",
+    )
+    content = response.json()
+    assert response.status_code == 400, json.dumps(content, indent=2)
+    assert content["error"] == "'transaction' must be a string"
+
+
+def test_post_transaction_must_be_string_number(client):
+    """POST /auth with numeric 'transaction' value returns 400, not 500."""
+    response = client.post(
+        AUTH_PATH,
+        json.dumps({"transaction": 12345}),
+        content_type="application/json",
+    )
+    content = response.json()
+    assert response.status_code == 400, json.dumps(content, indent=2)
+    assert content["error"] == "'transaction' must be a string"
+
+
+def test_post_transaction_must_be_string_boolean(client):
+    """POST /auth with boolean 'transaction' value returns 400, not 500."""
+    response = client.post(
+        AUTH_PATH,
+        json.dumps({"transaction": True}),
+        content_type="application/json",
+    )
+    content = response.json()
+    assert response.status_code == 400, json.dumps(content, indent=2)
+    assert content["error"] == "'transaction' must be a string"
+
+
+def test_post_transaction_invalid_xdr_string(client):
+    """POST /auth with a non-XDR string returns 400, not 500."""
+    response = client.post(AUTH_PATH, {"transaction": "not-valid-xdr-at-all"})
+    content = response.json()
+    assert response.status_code == 400, json.dumps(content, indent=2)
+    assert "error while validating challenge" in content["error"]
+
+
 @patch(f"{test_module}.settings.HORIZON_SERVER.load_account")
 def test_post_success_account_exists(mock_load_account, client):
     kp = Keypair.random()

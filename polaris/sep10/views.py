@@ -178,6 +178,8 @@ class SEP10Auth(APIView):
         envelope_xdr = request.data.get("transaction")
         if not envelope_xdr:
             return render_error_response(gettext("'transaction' is required"))
+        if not isinstance(envelope_xdr, str):
+            return render_error_response(gettext("'transaction' must be a string"))
         client_domain, error_response = self._validate_challenge_xdr(envelope_xdr)
         if error_response:
             return error_response
@@ -209,6 +211,11 @@ class SEP10Auth(APIView):
                 network_passphrase=settings.STELLAR_NETWORK_PASSPHRASE,
             )
         except (InvalidSep10ChallengeError, TypeError) as e:
+            return None, render_error_response(generic_err_msg % (str(e)))
+        except Exception as e:
+            logger.warning(
+                f"Unexpected error validating challenge transaction: {type(e).__name__}: {e}"
+            )
             return None, render_error_response(generic_err_msg % (str(e)))
 
         client_domain = None
