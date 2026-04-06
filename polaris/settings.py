@@ -50,6 +50,7 @@ accepted_seps = [
     "sep-24",
     "sep-31",
     "sep-38",
+    "sep-58",
 ]
 ACTIVE_SEPS = env_or_settings("ACTIVE_SEPS", list=True)
 for i, sep in enumerate(ACTIVE_SEPS):
