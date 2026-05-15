@@ -15,11 +15,13 @@ from polaris.integrations import TransactionForm
 from polaris.tests.helpers import (
     mock_check_auth_success,
     mock_check_auth_success_client_domain,
+    mock_check_auth_success_contract_account,
     mock_check_auth_success_muxed_account,
     mock_check_auth_success_with_memo,
     interactive_jwt_payload,
     TEST_MUXED_ACCOUNT,
     TEST_ACCOUNT_MEMO,
+    TEST_CONTRACT_ACCOUNT,
 )
 
 WEBAPP_PATH = "/sep24/transactions/withdraw/webapp"
@@ -58,6 +60,32 @@ def test_withdraw_success(client):
     assert t.memo is None
     assert t.memo_type == Transaction.MEMO_TYPES.hash
     assert t.from_address is None
+
+
+@pytest.mark.django_db
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success_contract_account)
+def test_withdraw_success_contract_auth_classic_source(client):
+    usd = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        sep24_enabled=True,
+        withdrawal_enabled=True,
+        distribution_seed=Keypair.random().secret,
+    )
+    source = Keypair.random().public_key
+    response = client.post(
+        WITHDRAW_PATH,
+        {"asset_code": usd.code, "amount": "100", "account": source},
+        follow=True,
+    )
+    content = response.json()
+    assert response.status_code == 200, content
+    assert content["type"] == "interactive_customer_info_needed"
+    transaction = Transaction.objects.filter(id=content["id"]).get()
+    assert transaction.stellar_account == TEST_CONTRACT_ACCOUNT
+    assert transaction.muxed_account is None
+    assert transaction.account_memo is None
+    assert transaction.from_address == source
 
 
 @pytest.mark.django_db
@@ -169,6 +197,25 @@ def test_withdraw_invalid_amount(client):
     )
     assert response.status_code == 400
     assert response.json()["error"] == "invalid 'amount'"
+
+
+@pytest.mark.django_db
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+def test_withdraw_rejects_contract_source(client):
+    usd = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        sep24_enabled=True,
+        withdrawal_enabled=True,
+        distribution_seed=Keypair.random().secret,
+    )
+    response = client.post(
+        WITHDRAW_PATH,
+        {"asset_code": usd.code, "amount": "100", "account": TEST_CONTRACT_ACCOUNT},
+        follow=True,
+    )
+    assert response.status_code == 400
+    assert response.json() == {"error": "invalid 'account'"}
 
 
 @pytest.mark.django_db

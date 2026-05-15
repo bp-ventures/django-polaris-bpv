@@ -9,6 +9,7 @@ from polaris.integrations.fees import calculate_fee, registered_fee_func
 from polaris.integrations.forms import TransactionForm, CreditCardForm
 from polaris.integrations.info import default_info_func, registered_info_func
 from polaris.integrations.quote import QuoteIntegration, registered_quote_integration
+from polaris.integrations.external_account import ExternalAccountIntegration, registered_external_account_integration
 from polaris.integrations.rails import RailsIntegration, registered_rails_integration
 from polaris.integrations.sep31 import (
     SEP31ReceiverIntegration,
@@ -39,6 +40,7 @@ def register_integrations(
     customer: CustomerIntegration = None,
     custody: CustodyIntegration = None,
     quote: QuoteIntegration = None,
+    external_account: ExternalAccountIntegration = None,
 ):
     """
     Registers the integration classes and functions with Polaris
@@ -122,6 +124,8 @@ def register_integrations(
         raise TypeError("custody must be a subclass of CustodyIntegration")
     elif quote and not issubclass(quote.__class__, QuoteIntegration):
         raise TypeError("quote must be a subclass of QuoteIntegration")
+    elif external_account and not issubclass(external_account.__class__, ExternalAccountIntegration):
+        raise TypeError("external_account must be a subclass of ExternalAccountIntegration")
 
     for obj, attr in [
         (deposit, "registered_deposit_integration"),
@@ -134,6 +138,7 @@ def register_integrations(
         (rails, "registered_rails_integration"),
         (custody, "registered_custody_integration"),
         (quote, "registered_quote_integration"),
+        (external_account, "registered_external_account_integration"),
     ]:
         if obj:
             setattr(this, attr, obj)

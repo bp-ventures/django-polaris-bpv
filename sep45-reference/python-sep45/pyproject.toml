@@ -1,0 +1,21 @@
+[project]
+name = "python-sep45"
+version = "0.1.0"
+description = "Minimal SEP-45 auth service using Flask and stellar-sdk"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "flask>=3.1.0",
+    "PyJWT>=2.10.0",
+    "requests>=2.32.0",
+    "stellar-sdk>=12.0.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["."]
+python_files = ["test_*.py"]

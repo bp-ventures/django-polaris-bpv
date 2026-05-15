@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from urllib.parse import urlparse
 from typing import Union, Dict, Optional
 
-from stellar_sdk import Keypair, MuxedAccount
+from stellar_sdk import Address, Keypair, MuxedAccount
 from stellar_sdk.strkey import StrKey
 from stellar_sdk.exceptions import (
     Ed25519PublicKeyInvalidError,
@@ -42,6 +42,7 @@ class SEP10Token:
 
         memo = None
         stellar_account = None
+        contract_account = None
         if jwt["sub"].startswith("M"):
             try:
                 StrKey.decode_muxed_account(jwt["sub"])
@@ -52,6 +53,12 @@ class SEP10Token:
                 stellar_account, memo = jwt["sub"].split(":")
             except ValueError:
                 raise ValueError(f"improperly formatted 'sub' value: {jwt['sub']}")
+        elif jwt["sub"].startswith("C"):
+            contract_account = jwt["sub"]
+            try:
+                Address(contract_account)
+            except Exception:
+                raise ValueError(f"invalid contract address: {jwt['sub']}")
         else:
             stellar_account = jwt["sub"]
 
@@ -94,28 +101,30 @@ class SEP10Token:
     @property
     def account(self) -> str:
         """
-        The Stellar account (`G...`) authenticated. Note that a muxed account
-        could have been authenticated, in which case `Token.muxed_account` should
-        be used.
+        The Stellar (``G...``), muxed (``M...``), or contract (``C...``) account
+        authenticated. For muxed callers prefer :attr:`muxed_account`.
         """
-        if self._payload["sub"].startswith("M"):
-            return MuxedAccount.from_account(self._payload["sub"]).account_id
-        elif ":" in self._payload["sub"]:
-            return self._payload["sub"].split(":")[0]
+        sub = self._payload["sub"]
+        if sub.startswith("M"):
+            return MuxedAccount.from_account(sub).account_id
+        elif ":" in sub:
+            return sub.split(":")[0]
         else:
-            return self._payload["sub"]
+            return sub
 
     @property
     def muxed_account(self) -> Optional[str]:
         """
-        The M-address specified in the payload's ``sub`` value, if present
+        The M-address specified in the payload's ``sub`` value, if present.
+        ``None`` for ``G...`` and contract (``C...``) accounts.
         """
         return self._payload["sub"] if self._payload["sub"].startswith("M") else None
 
     @property
     def memo(self) -> Optional[int]:
         """
-        The memo included with the payload's ``sub`` value, if present
+        The memo included with the payload's ``sub`` value, if present.
+        ``None`` for contract (``C...``) accounts.
         """
         return (
             int(self._payload["sub"].split(":")[1])

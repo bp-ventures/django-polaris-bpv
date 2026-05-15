@@ -39,3 +39,9 @@ if "sep-31" in settings.ACTIVE_SEPS:
 
 if "sep-38" in settings.ACTIVE_SEPS:
     urlpatterns.append(path("sep38/", include("polaris.sep38.urls")))
+
+if "sep-45" in settings.ACTIVE_SEPS:
+    urlpatterns.append(path("sep45/", include("polaris.sep45.urls")))
+
+if "sep-58" in settings.ACTIVE_SEPS:
+    urlpatterns.append(path("sep58/", include("polaris.sep58.urls")))

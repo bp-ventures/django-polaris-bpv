@@ -30,8 +30,8 @@ django.setup()
 # -- Project information -----------------------------------------------------
 
 project = "django-polaris-bpv"
-copyright = "2019, Stellar Development Foundation"
-author = "Stellar Development Foundation"
+copyright = "2019, Stellar Development Foundation. Maintained by BP Ventures"
+author = "Stellar Development Foundation, BP Ventures"
 
 # The short X.Y version
 version = __version__

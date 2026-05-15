@@ -1,4 +1,5 @@
-import pytz
+import zoneinfo
+from zoneinfo import ZoneInfo
 from datetime import datetime, timedelta, timezone
 
 from rest_framework.decorators import api_view, parser_classes, renderer_classes
@@ -25,9 +26,10 @@ def post_tzinfo(request: Request) -> Response:
     now = datetime.now(timezone.utc)
     offset = timedelta(minutes=request.data["sessionOffset"])
     zone = None
-    for tz in map(pytz.timezone, pytz.all_timezones_set):
+    for tz_name in sorted(zoneinfo.available_timezones()):
+        tz = ZoneInfo(tz_name)
         if now.astimezone(tz).utcoffset() == offset:
-            zone = tz.zone
+            zone = tz.key
             break
     if not zone:
         return render_error_response("no timezones matched with offset")
