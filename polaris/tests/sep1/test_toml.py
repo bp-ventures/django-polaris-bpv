@@ -22,7 +22,17 @@ def test_toml_generated(mock_toml_func, client):
     )
     with patch(
         f"{TEST_MODULE}.settings.ACTIVE_SEPS",
-        ["sep-1", "sep-6", "sep-10", "sep-12", "sep-24", "sep-31", "sep-38", "sep-58"],
+        [
+            "sep-1",
+            "sep-6",
+            "sep-10",
+            "sep-12",
+            "sep-24",
+            "sep-31",
+            "sep-38",
+            "sep-45",
+            "sep-58",
+        ],
     ):
         response = client.get(TOML_PATH)
     assert response.status_code == 200
@@ -40,6 +50,10 @@ def test_toml_generated(mock_toml_func, client):
     assert "KYC_SERVER" in toml_data
     assert "DIRECT_PAYMENT_SERVER" in toml_data
     assert "ANCHOR_QUOTE_SERVER" in toml_data
+    assert "WEB_AUTH_FOR_CONTRACTS_ENDPOINT" in toml_data
+    assert "WEB_AUTH_CONTRACT_ID" in toml_data
+    assert toml_data["WEB_AUTH_FOR_CONTRACTS_ENDPOINT"].endswith("/sep45/auth")
+    assert toml_data["WEB_AUTH_CONTRACT_ID"] == settings.SEP45_WEB_AUTH_CONTRACT_ID
     assert "EXTERNAL_ACCOUNT_SERVER" in toml_data
     assert toml_data["EXTERNAL_ACCOUNT_SERVER"].endswith("/sep58")
     assert toml_data["TRANSFER_SERVER"] != toml_data["TRANSFER_SERVER_SEP0024"]

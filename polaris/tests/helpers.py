@@ -71,6 +71,25 @@ def mock_check_auth_success_client_domain(request, func, **kwargs):
     )
 
 
+TEST_CONTRACT_ACCOUNT = (
+    "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC"
+)
+
+
+def mock_check_auth_success_contract_account(request, func, **kwargs):
+    """Mocks `sep10.utils.check_auth`, for a SEP-45 (C...) caller."""
+    return func(
+        Mock(
+            account=TEST_CONTRACT_ACCOUNT,
+            muxed_account=None,
+            memo=None,
+            client_domain=None,
+        ),
+        request,
+        **kwargs,
+    )
+
+
 def sep10(client, address, seed):
     response = client.get(f"/auth?account={address}", follow=True)
     content = json.loads(response.content)
