@@ -7,6 +7,8 @@ def cors_allow_origins_for_polaris_requests(sender, request, **_kwargs):
         or request.path.startswith("/sep6")
         or request.path.startswith("/sep31")
         or request.path.startswith("/sep38")
+        or request.path.startswith("/sep45")
+        or request.path.startswith("/sep58")
         or request.path.startswith("/.well-known")
         or request.path.startswith("/auth")
         or request.path.startswith("/kyc")

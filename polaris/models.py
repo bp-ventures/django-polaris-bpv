@@ -801,6 +801,24 @@ class Transaction(models.Model):
         app_label = "polaris"
 
 
+class WebAuthNonce(models.Model):
+    """
+    A one-shot nonce issued by ``GET /sep45/auth`` and consumed by ``POST /sep45/auth``.
+    Keyed by the nonce string itself; atomic-consume is a single UPDATE by PK.
+    """
+
+    id = models.CharField(primary_key=True, max_length=64)
+    used = models.BooleanField(default=False)
+    expires_at = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    used_at = models.DateTimeField(null=True, blank=True)
+
+    objects = models.Manager()
+
+    class Meta:
+        app_label = "polaris"
+
+
 class Quote(models.Model):
     """
     Quote objects represent either firm or indicative quotes requested by the client

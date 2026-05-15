@@ -84,6 +84,12 @@ def generate_toml(request: Request) -> Response:
         toml_dict["DIRECT_PAYMENT_SERVER"] = os.path.join(settings.HOST_URL, "sep31")
     if "sep-38" in settings.ACTIVE_SEPS:
         toml_dict["ANCHOR_QUOTE_SERVER"] = os.path.join(settings.HOST_URL, "sep38")
+    if "sep-45" in settings.ACTIVE_SEPS:
+        toml_dict["WEB_AUTH_FOR_CONTRACTS_ENDPOINT"] = os.path.join(
+            settings.HOST_URL, "sep45", "auth"
+        )
+        toml_dict["WEB_AUTH_CONTRACT_ID"] = settings.SEP45_WEB_AUTH_CONTRACT_ID
+        toml_dict["SIGNING_KEY"] = settings.SIGNING_KEY
     if "sep-58" in settings.ACTIVE_SEPS:
         toml_dict["EXTERNAL_ACCOUNT_SERVER"] = os.path.join(settings.HOST_URL, "sep58")
 

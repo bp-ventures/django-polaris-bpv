@@ -8,6 +8,7 @@ from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 from stellar_sdk.server import Server
 from stellar_sdk.keypair import Keypair
+from stellar_sdk.strkey import StrKey
 
 
 def env_or_settings(variable, required=True, bool=False, list=False, int=False):
@@ -44,12 +45,12 @@ elif hasattr(settings, "POLARIS_ENV_PATH"):
 accepted_seps = [
     "sep-1",
     "sep-6",
-    "sep-6",
     "sep-10",
     "sep-12",
     "sep-24",
     "sep-31",
     "sep-38",
+    "sep-45",
     "sep-58",
 ]
 ACTIVE_SEPS = env_or_settings("ACTIVE_SEPS", list=True)
@@ -61,7 +62,7 @@ for i, sep in enumerate(ACTIVE_SEPS):
     ACTIVE_SEPS[i] = sep.lower()
 
 SIGNING_SEED, SIGNING_KEY = None, None
-if "sep-10" in ACTIVE_SEPS:
+if any(sep in ACTIVE_SEPS for sep in ["sep-10", "sep-45"]):
     SIGNING_SEED = env_or_settings("SIGNING_SEED")
     try:
         SIGNING_KEY = Keypair.from_secret(SIGNING_SEED).public_key
@@ -100,6 +101,22 @@ SEP10_HOME_DOMAINS = env_or_settings(
 ) or [urlparse(HOST_URL).netloc]
 if any(d.startswith("http") for d in SEP10_HOME_DOMAINS):
     raise ImproperlyConfigured("SEP10_HOME_DOMAINS must only be hostnames")
+
+SOROBAN_RPC_URL = None
+SEP45_WEB_AUTH_CONTRACT_ID = None
+SEP45_JWT_SECRET = None
+if "sep-45" in ACTIVE_SEPS:
+    SOROBAN_RPC_URL = env_or_settings("SOROBAN_RPC_URL")
+    if not SOROBAN_RPC_URL.startswith("http"):
+        raise ImproperlyConfigured(
+            "SOROBAN_RPC_URL must include a protocol (http or https)"
+        )
+    SEP45_WEB_AUTH_CONTRACT_ID = env_or_settings("SEP45_WEB_AUTH_CONTRACT_ID")
+    if not StrKey.is_valid_contract(SEP45_WEB_AUTH_CONTRACT_ID):
+        raise ImproperlyConfigured("Invalid SEP45_WEB_AUTH_CONTRACT_ID")
+    SEP45_JWT_SECRET = env_or_settings("SEP45_JWT_SECRET")
+    if not SEP45_JWT_SECRET:
+        raise ImproperlyConfigured("SEP45_JWT_SECRET must be set when sep-45 is active")
 
 MAX_TRANSACTION_FEE_STROOPS = env_or_settings(
     "MAX_TRANSACTION_FEE_STROOPS", int=True, required=False

@@ -1,7 +1,10 @@
+from jwt import decode
+from jwt.exceptions import InvalidTokenError
 from rest_framework import status
 from rest_framework.request import Request
 from rest_framework.response import Response
 
+from polaris import settings
 from polaris.sep10.token import SEP10Token
 from polaris.utils import render_error_response
 
@@ -35,7 +38,11 @@ def validate_sep10_token():
 
 def validate_jwt_request(request: Request) -> SEP10Token:
     """
-    Validate the JSON web token in a request and return the source account address
+    Validate the JSON web token in a request and return the source account address.
+
+    Tries ``SERVER_JWT_KEY`` (SEP-10) first, then falls back to ``SEP45_JWT_SECRET``
+    (SEP-45) when sep-45 is active. The returned :class:`SEP10Token` is the same
+    shape regardless of which protocol signed the JWT.
 
     :raises ValueError: invalid JWT
     """
@@ -56,7 +63,27 @@ def validate_jwt_request(request: Request) -> SEP10Token:
     if not encoded_jwt:
         raise bad_format_error
 
+    payload = _decode_jwt(encoded_jwt)
     try:
-        return SEP10Token(encoded_jwt)
+        return SEP10Token(payload)
     except ValueError as e:
         raise ValueError(f"SEP-10 token error: {str(e)}")
+
+
+def _decode_jwt(encoded_jwt: str) -> dict:
+    last_error: InvalidTokenError | None = None
+    if settings.SERVER_JWT_KEY:
+        try:
+            return decode(encoded_jwt, settings.SERVER_JWT_KEY, algorithms=["HS256"])
+        except InvalidTokenError as exc:
+            last_error = exc
+    if "sep-45" in settings.ACTIVE_SEPS and settings.SEP45_JWT_SECRET:
+        try:
+            return decode(
+                encoded_jwt, settings.SEP45_JWT_SECRET, algorithms=["HS256"]
+            )
+        except InvalidTokenError as exc:
+            last_error = exc
+    if last_error is None:
+        raise ValueError("SEP-10 token error: no JWT secret configured")
+    raise ValueError(f"SEP-10 token error: unable to decode jwt{last_error}")
