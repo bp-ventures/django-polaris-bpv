@@ -19,11 +19,13 @@ from polaris.integrations import TransactionForm
 from polaris.tests.helpers import (
     mock_check_auth_success,
     mock_check_auth_success_client_domain,
+    mock_check_auth_success_contract_account,
     mock_check_auth_success_muxed_account,
     mock_check_auth_success_with_memo,
     interactive_jwt_payload,
     TEST_MUXED_ACCOUNT,
     TEST_ACCOUNT_MEMO,
+    TEST_CONTRACT_ACCOUNT,
 )
 
 
@@ -74,6 +76,27 @@ def test_deposit_success(client, acc1_usd_deposit_transaction_factory):
     assert t.to_address == deposit.stellar_account
     assert t.memo is None
     assert t.claimable_balance_supported is False
+
+
+@pytest.mark.django_db
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success_contract_account)
+def test_deposit_success_contract_auth_classic_destination(client):
+    asset = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        sep24_enabled=True,
+        deposit_enabled=True,
+    )
+    destination = Keypair.random().public_key
+    response = client.post(DEPOSIT_PATH, {"asset_code": asset.code, "account": destination, "amount": 100})
+    content = response.json()
+    transaction = Transaction.objects.get()
+    assert response.status_code == 200, content
+    assert content["type"] == "interactive_customer_info_needed"
+    assert transaction.stellar_account == TEST_CONTRACT_ACCOUNT
+    assert transaction.muxed_account is None
+    assert transaction.account_memo is None
+    assert transaction.to_address == destination
 
 
 @pytest.mark.django_db
@@ -209,6 +232,24 @@ def test_deposit_invalid_account(client, acc1_usd_deposit_transaction_factory):
 
     assert response.status_code == 400
     assert content == {"error": "invalid 'account'"}
+
+
+@pytest.mark.django_db
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+def test_deposit_rejects_contract_destination(client):
+    asset = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        sep24_enabled=True,
+        deposit_enabled=True,
+    )
+    response = client.post(
+        DEPOSIT_PATH,
+        {"asset_code": asset.code, "account": TEST_CONTRACT_ACCOUNT, "amount": 100},
+        follow=True,
+    )
+    assert response.status_code == 400
+    assert response.json() == {"error": "invalid 'account'"}
 
 
 @pytest.mark.django_db

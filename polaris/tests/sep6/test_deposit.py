@@ -15,9 +15,11 @@ from polaris.models import Transaction, Asset, OffChainAsset, ExchangePair, Quot
 from polaris.tests.helpers import (
     mock_check_auth_success,
     mock_check_auth_success_client_domain,
+    mock_check_auth_success_contract_account,
     mock_check_auth_success_muxed_account,
     mock_check_auth_success_with_memo,
     TEST_ACCOUNT_MEMO,
+    TEST_CONTRACT_ACCOUNT,
     TEST_MUXED_ACCOUNT,
 )
 from polaris.integrations import DepositIntegration
@@ -73,6 +75,33 @@ def test_deposit_success(mock_process_sep6_request, client):
         "max_amount": round(asset.deposit_max_amount, asset.significant_decimals),
         "extra_info": {"test": "test"},
     }
+
+
+@pytest.mark.django_db
+@patch("polaris.sep6.deposit.rdi.process_sep6_request")
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success_contract_account)
+def test_deposit_success_contract_auth_classic_destination(mock_process_sep6_request, client):
+    asset = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        deposit_min_amount=10,
+        deposit_max_amount=1000,
+        sep6_enabled=True,
+        deposit_enabled=True,
+    )
+    destination = Keypair.random().public_key
+    mock_process_sep6_request.return_value = {
+        "how": "test",
+        "extra_info": {"test": "test"},
+    }
+    response = client.get(DEPOSIT_PATH, {"asset_code": asset.code, "account": destination})
+    assert response.status_code == 200
+    mock_process_sep6_request.assert_called_once()
+    transaction = Transaction.objects.get()
+    assert transaction.stellar_account == TEST_CONTRACT_ACCOUNT
+    assert transaction.muxed_account is None
+    assert transaction.account_memo is None
+    assert transaction.to_address == destination
 
 
 @pytest.mark.django_db
@@ -175,6 +204,22 @@ def test_deposit_bad_muxed_account(client):
     content = json.loads(response.content)
     assert response.status_code == 400
     assert content == {"error": "invalid 'account'"}
+
+
+@pytest.mark.django_db
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+def test_deposit_rejects_contract_destination(client):
+    asset = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        deposit_min_amount=10,
+        deposit_max_amount=1000,
+        sep6_enabled=True,
+        deposit_enabled=True,
+    )
+    response = client.get(DEPOSIT_PATH, {"asset_code": asset.code, "account": TEST_CONTRACT_ACCOUNT})
+    assert response.status_code == 400
+    assert response.json() == {"error": "invalid 'account'"}
 
 
 @pytest.mark.django_db

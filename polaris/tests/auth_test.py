@@ -2,6 +2,7 @@
 import jwt
 import base64
 import json
+import time
 from unittest.mock import Mock, patch
 from urllib.parse import urlparse
 
@@ -13,6 +14,7 @@ from stellar_sdk.operation import ManageData
 
 from polaris import settings
 from polaris.tests.conftest import STELLAR_ACCOUNT_1
+from polaris.tests.helpers import TEST_CONTRACT_ACCOUNT
 from polaris.sep10.utils import check_auth
 from polaris.sep10.token import SEP10Token
 
@@ -131,6 +133,39 @@ account_exists = Mock(
     ),
     thresholds=Mock(med_threshold=0),
 )
+
+
+def test_check_auth_accepts_sep45_jwt():
+    secret = "sep45-test-secret-with-at-least-32-bytes"
+    now = int(time.time())
+    token = jwt.encode(
+        {
+            "iss": "http://testserver/sep45/auth",
+            "sub": TEST_CONTRACT_ACCOUNT,
+            "iat": now - 5,
+            "exp": now + 60,
+        },
+        secret,
+        algorithm="HS256",
+    )
+    request = Mock(
+        headers={"Authorization": auth_str.format(token)},
+        path="/kyc/customer",
+    )
+    mock_view_function = Mock()
+
+    with patch("polaris.sep10.utils.settings.ACTIVE_SEPS", ["sep-10", "sep-45"]), patch(
+        "polaris.sep10.utils.settings.SEP45_JWT_SECRET", secret
+    ):
+        check_auth(request, mock_view_function)
+
+    mock_view_function.assert_called_once()
+    auth_token = mock_view_function.mock_calls[0][1][0]
+    assert isinstance(auth_token, SEP10Token)
+    assert auth_token.account == TEST_CONTRACT_ACCOUNT
+    assert auth_token.muxed_account is None
+    assert auth_token.memo is None
+    assert mock_view_function.mock_calls[0][1][1] is request
 
 
 @patch(

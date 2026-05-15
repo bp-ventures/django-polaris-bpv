@@ -15,10 +15,12 @@ from polaris.tests.conftest import USD_DISTRIBUTION_SEED
 from polaris.tests.helpers import (
     mock_check_auth_success,
     mock_check_auth_success_client_domain,
+    mock_check_auth_success_contract_account,
     mock_check_auth_success_muxed_account,
     mock_check_auth_success_with_memo,
     TEST_MUXED_ACCOUNT,
     TEST_ACCOUNT_MEMO,
+    TEST_CONTRACT_ACCOUNT,
 )
 from polaris.integrations import WithdrawalIntegration
 from polaris.models import Transaction, Asset, OffChainAsset, ExchangePair, Quote
@@ -76,6 +78,41 @@ def test_good_withdrawal_integration(client):
         "max_amount": round(asset.withdrawal_max_amount, asset.significant_decimals),
         "extra_info": {"test": "test"},
     }
+
+
+@pytest.mark.django_db
+@patch("polaris.sep6.withdraw.rwi", GoodWithdrawalIntegration())
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success_contract_account)
+def test_withdraw_success_contract_auth_classic_source(client):
+    asset = Asset.objects.create(
+        code="USD",
+        issuer=Keypair.random().public_key,
+        sep6_enabled=True,
+        withdrawal_enabled=True,
+        withdrawal_min_amount=10,
+        withdrawal_max_amount=1000,
+        distribution_seed=Keypair.random().secret,
+    )
+    source = Keypair.random().public_key
+    response = client.get(
+        WITHDRAW_PATH,
+        {
+            "asset_code": asset.code,
+            "type": "bank_account",
+            "dest": "test bank account number",
+            "account": source,
+        },
+    )
+    content = response.json()
+    assert response.status_code == 200, content
+    assert content.pop("memo")
+    assert content.pop("memo_type") == Transaction.MEMO_TYPES.hash
+    assert content["account_id"] == asset.distribution_account
+    transaction = Transaction.objects.get()
+    assert transaction.stellar_account == TEST_CONTRACT_ACCOUNT
+    assert transaction.muxed_account is None
+    assert transaction.account_memo is None
+    assert transaction.from_address == source
 
 
 @pytest.mark.django_db
@@ -170,6 +207,23 @@ def test_withdraw_bad_muxed_account(client, acc1_usd_withdrawal_transaction_fact
     content = json.loads(response.content)
     assert response.status_code == 400
     assert content == {"error": "invalid 'account'"}
+
+
+@pytest.mark.django_db
+@patch("polaris.sep10.utils.check_auth", mock_check_auth_success)
+def test_withdraw_rejects_contract_source(client, acc1_usd_withdrawal_transaction_factory):
+    withdraw = acc1_usd_withdrawal_transaction_factory(protocol=Transaction.PROTOCOL.sep6)
+    response = client.get(
+        WITHDRAW_PATH,
+        {
+            "asset_code": withdraw.asset.code,
+            "type": "good type",
+            "dest": "test",
+            "account": TEST_CONTRACT_ACCOUNT,
+        },
+    )
+    assert response.status_code == 400
+    assert response.json() == {"error": "invalid 'account'"}
 
 
 @pytest.mark.django_db
