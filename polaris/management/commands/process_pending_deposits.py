@@ -140,18 +140,22 @@ class ProcessPendingDeposits:
     @classmethod
     async def check_rails_for_ready_transactions(cls, queues: PolarisQueueAdapter):
         ready_transactions = await sync_to_async(cls.get_ready_deposits)()
-        if not rci.account_creation_supported:
-            Transaction.objects.filter(
-                id__in=[t.id for t in ready_transactions]
-            ).update(
-                # TODO
-                # we don't have an external status that indicates the user or wallet
-                # needs to fund the account. Placing in pending_user for now.
-                status=Transaction.STATUS.pending_user,
-                submission_status=Transaction.SUBMISSION_STATUS.pending_funding,
-            )
-            return
         await cls.check_accounts(queues, ready_transactions)
+
+    @classmethod
+    def save_as_pending_funding(cls, transaction: Transaction):
+        """Park one transaction whose destination account does not exist yet.
+
+        Used when the anchor reports account_creation_supported as False: Polaris cannot create
+        the account, so the wallet or the user has to fund it first.
+        """
+
+        # TODO
+        # we don't have an external status that indicates the user or wallet
+        # needs to fund the account. Placing in pending_user for now.
+        transaction.status = Transaction.STATUS.pending_user
+        transaction.submission_status = Transaction.SUBMISSION_STATUS.pending_funding
+        transaction.save()
 
     @classmethod
     async def check_accounts_task(
@@ -183,6 +187,11 @@ class ProcessPendingDeposits:
                         Keypair.from_public_key(transaction.to_address), server
                     )
                 except RuntimeError:
+                    if not rci.account_creation_supported:
+                        # The anchor cannot create the account, so the wallet or the user has
+                        # to fund it before the deposit can be submitted.
+                        await sync_to_async(cls.save_as_pending_funding)(transaction)
+                        continue
                     # account not found, submitting the transaction will take care of account creation
                     await sync_to_async(cls.save_as_ready_for_submission)(transaction)
                     queues.queue_transaction(
