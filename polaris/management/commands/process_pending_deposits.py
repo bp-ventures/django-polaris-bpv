@@ -530,9 +530,11 @@ class ProcessPendingDeposits:
         await maybe_make_callback_async(transaction)
 
         try:
-            distribution_account = await sync_to_async(rci.get_distribution_account)(
-                asset=transaction.asset
-            )
+            # transaction.asset is evaluated here, on the loop, before sync_to_async runs,
+            # so the read goes inside the thread with the call it belongs to.
+            distribution_account = await sync_to_async(
+                lambda: rci.get_distribution_account(asset=transaction.asset)
+            )()
         except NotImplementedError:
             # Polaris has to assume that the custody service provider can handle concurrent
             # requests to send funds to destination accounts since it does not have a dedicated
@@ -563,7 +565,8 @@ class ProcessPendingDeposits:
                     transaction=transaction
                 )
             else:
-                has_trustline = not is_pending_trust(
+                # is_pending_trust reads transaction.asset.code and .issuer.
+                has_trustline = not await sync_to_async(is_pending_trust)(
                     transaction, destination_account_json
                 )
                 if not has_trustline and not transaction.claimable_balance_supported:

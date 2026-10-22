@@ -1,4 +1,5 @@
 """This module defines helpers for various endpoints."""
+import asyncio
 import base64
 import json
 import codecs
@@ -11,6 +12,7 @@ from typing import Optional, Union, Tuple, Dict
 from decimal import Decimal
 
 import aiohttp
+from asgiref.sync import sync_to_async
 from django.utils.translation import gettext as _
 from django.core.exceptions import ObjectDoesNotExist
 from django.utils.translation import gettext
@@ -348,7 +350,12 @@ async def make_on_change_callback_async(
     if not timeout:
         timeout = settings.CALLBACK_REQUEST_TIMEOUT
     timeout_obj = aiohttp.ClientTimeout(total=timeout)
-    callback_body = json.dumps({"transaction": TransactionSerializer(transaction).data})
+    # TransactionSerializer reads transaction.asset and transaction.quote. Either is a lazy
+    # load when a custody integration has refreshed the transaction and dropped Django's
+    # cached relations, and a lazy load here would be a query on the event loop.
+    callback_body = await sync_to_async(
+        lambda: json.dumps({"transaction": TransactionSerializer(transaction).data})
+    )()
     try:
         signature_header_value = compute_callback_signature(transaction.on_change_callback, callback_body)
     except ValueError:  # 
@@ -383,7 +390,10 @@ async def maybe_make_callback_async(
             callback_resp = await make_on_change_callback_async(
                 transaction, timeout=timeout
             )
-        except RequestException as e:
+        except (RequestException, aiohttp.ClientError, asyncio.TimeoutError) as e:
+            # The async path posts with aiohttp, which raises ClientError, not RequestException.
+            # Uncaught, a callback the anchor cannot reach leaves submit_transaction(), the
+            # task's own loop and asyncio.gather(), taking the whole command down.
             logger.error(f"Callback request raised {e.__class__.__name__}: {str(e)}")
         else:
             if callback_resp and not callback_resp.ok:

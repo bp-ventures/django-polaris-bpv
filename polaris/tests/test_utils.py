@@ -1,3 +1,4 @@
+import aiohttp
 import base64
 import json
 import pytest
@@ -201,3 +202,23 @@ def test_maybe_make_callback_postmessage(mock_log_error, mock_make_callback):
     utils.maybe_make_callback(mock_transaction)
     mock_make_callback.assert_not_called()
     mock_log_error.assert_not_called()
+
+
+@pytest.mark.asyncio
+@patch(f"{test_module}.TransactionSerializer", Mock())
+@patch(f"{test_module}.json", Mock(dumps=Mock(return_value="{}")))
+@patch(f"{test_module}.compute_callback_signature", Mock(return_value="test"))
+async def test_maybe_make_callback_async_swallows_an_unreachable_callback():
+    """The async path posts with aiohttp, which raises ClientError, not RequestException.
+
+    Uncaught, that exception leaves submit_transaction(), the deposit task's own loop and the
+    asyncio.gather() that owns it, so one wallet with an unreachable callback URL stops the
+    whole process_pending_deposits command.
+    """
+
+    transaction = Mock(on_change_callback="https://callbacks.example/sep6", id="t")
+    with patch(
+        f"{test_module}.make_on_change_callback_async",
+        side_effect=aiohttp.ClientConnectionError("unreachable"),
+    ):
+        await utils.maybe_make_callback_async(transaction)

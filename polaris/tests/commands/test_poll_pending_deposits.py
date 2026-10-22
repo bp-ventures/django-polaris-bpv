@@ -1142,6 +1142,57 @@ async def test_handle_successful_deposit_with_cleared_relation_cache():
 
 
 @pytest.mark.django_db(transaction=True)
+@patch("polaris.utils.compute_callback_signature", Mock(side_effect=ValueError))
+async def test_handle_successful_deposit_with_callback_and_cleared_relation_cache():
+    """The on_change_callback serializes the transaction, and that reads its relations.
+
+    TransactionSerializer.__init__ reads transaction.asset and to_representation() reads
+    transaction.quote. maybe_make_callback_async runs on the event loop, so with the cache
+    dropped by a refreshing integration both are queries Django refuses, and the settled
+    payment is recorded as an error by the caller's exception handler.
+
+    compute_callback_signature is made to raise so the callback returns before any network
+    I/O, after the body has been built.
+    """
+
+    usd = await sync_to_async(Asset.objects.create)(
+        code="USD", issuer=Keypair.random().public_key, significant_decimals=2
+    )
+    destination = Keypair.random().public_key
+    quote = await sync_to_async(Quote.objects.create)(
+        stellar_account=destination,
+        type=Quote.TYPE.firm,
+        sell_asset="iso4217:USD",
+        buy_asset=f"stellar:USD:{usd.issuer}",
+        sell_amount=Decimal("100"),
+        buy_amount=Decimal("100"),
+        price=Decimal("1"),
+    )
+    transaction = await sync_to_async(Transaction.objects.create)(
+        asset=usd,
+        quote=quote,
+        stellar_account=destination,
+        to_address=destination,
+        status=Transaction.STATUS.pending_anchor,
+        submission_status=Transaction.SUBMISSION_STATUS.unblocked,
+        kind=getattr(Transaction.KIND, "deposit-exchange"),
+        amount_in=100,
+        amount_fee=1,
+        amount_out=100,
+        on_change_callback="https://callbacks.example/sep6",
+    )
+    transaction._state.fields_cache.clear()
+
+    await ProcessPendingDeposits.handle_successful_deposit(
+        transaction_json={"paging_token": "123", "id": "456"}, transaction=transaction
+    )
+
+    await sync_to_async(transaction.refresh_from_db)()
+    assert transaction.status == Transaction.STATUS.completed
+    assert transaction.stellar_transaction_id == "456"
+
+
+@pytest.mark.django_db(transaction=True)
 async def test_handle_successful_deposit_without_quote_and_cleared_relation_cache():
     """The no-quote branch reads asset.significant_decimals, and must not read it lazily."""
 
