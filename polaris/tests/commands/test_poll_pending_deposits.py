@@ -30,7 +30,7 @@ from stellar_sdk.memo import TextMemo
 from asgiref.sync import sync_to_async
 
 from polaris import settings
-from polaris.models import Asset, Transaction
+from polaris.models import Asset, Quote, Transaction
 from polaris.utils import create_deposit_envelope
 from polaris.management.commands.process_pending_deposits import (
     ProcessPendingDeposits,
@@ -735,6 +735,49 @@ async def test_populate_queues():
         "", SUBMIT_TRANSACTION_QUEUE
     )
     assert transaction_from_submission_queue == submission_transaction
+
+
+@pytest.mark.django_db(transaction=True)
+async def test_populate_queues_selects_the_quote():
+    """A restored deposit-exchange row must arrive with its quote already loaded.
+
+    handle_successful_deposit reads transaction.quote after the payment has been submitted and
+    Horizon has confirmed it, but before the completed status is saved. Left lazy, that read is
+    a synchronous query inside a coroutine and raises SynchronousOnlyOperation on Django
+    versions that guard async-unsafe database access, so a settled payment is recorded as an
+    error and completed_at, stellar_transaction_id and paging_token are never persisted.
+    """
+
+    usd = await sync_to_async(Asset.objects.create)(
+        code="USD", issuer=Keypair.random().public_key
+    )
+    destination = Keypair.random().public_key
+    quote = await sync_to_async(Quote.objects.create)(
+        stellar_account=destination,
+        type=Quote.TYPE.firm,
+        sell_asset="iso4217:USD",
+        buy_asset=f"stellar:USD:{usd.issuer}",
+        sell_amount=Decimal("100"),
+        buy_amount=Decimal("100"),
+        price=Decimal("1"),
+    )
+    await sync_to_async(Transaction.objects.create)(
+        asset=usd,
+        stellar_account=destination,
+        to_address=destination,
+        status=Transaction.STATUS.pending_anchor,
+        kind=getattr(Transaction.KIND, "deposit-exchange"),
+        quote=quote,
+        queue=SUBMIT_TRANSACTION_QUEUE,
+        queued_at=datetime.datetime.now(datetime.timezone.utc),
+        submission_status=Transaction.SUBMISSION_STATUS.ready,
+    )
+
+    qa = PolarisQueueAdapter([SUBMIT_TRANSACTION_QUEUE])
+    await sync_to_async(qa.populate_queues)()
+
+    restored = await qa.get_transaction("", SUBMIT_TRANSACTION_QUEUE)
+    assert "quote" in restored._state.fields_cache
 
 
 @pytest.mark.django_db(transaction=True)

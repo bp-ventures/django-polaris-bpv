@@ -88,7 +88,12 @@ class PolarisQueueAdapter:
                 queued_at__isnull=False,
             )
             .order_by("queued_at")
-            .select_related("asset")
+            # quote is selected because handle_successful_deposit reads it after the payment has
+            # already been submitted. Leaving it lazy makes that read a synchronous query inside
+            # a coroutine, which raises SynchronousOnlyOperation on Django versions that guard
+            # async-unsafe database access, after Horizon has confirmed the payment and before
+            # the completed status is saved.
+            .select_related("asset", "quote")
         )
 
         logger.debug(
