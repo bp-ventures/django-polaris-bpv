@@ -530,9 +530,11 @@ class ProcessPendingDeposits:
         await maybe_make_callback_async(transaction)
 
         try:
-            distribution_account = await sync_to_async(rci.get_distribution_account)(
-                asset=transaction.asset
-            )
+            # transaction.asset is evaluated here, on the loop, before sync_to_async runs,
+            # so the read goes inside the thread with the call it belongs to.
+            distribution_account = await sync_to_async(
+                lambda: rci.get_distribution_account(asset=transaction.asset)
+            )()
         except NotImplementedError:
             # Polaris has to assume that the custody service provider can handle concurrent
             # requests to send funds to destination accounts since it does not have a dedicated
@@ -563,7 +565,8 @@ class ProcessPendingDeposits:
                     transaction=transaction
                 )
             else:
-                has_trustline = not is_pending_trust(
+                # is_pending_trust reads transaction.asset.code and .issuer.
+                has_trustline = not await sync_to_async(is_pending_trust)(
                     transaction, destination_account_json
                 )
                 if not has_trustline and not transaction.claimable_balance_supported:
@@ -664,10 +667,17 @@ class ProcessPendingDeposits:
         transaction.status_message = None
         transaction.queue = None
         transaction.queued_at = None
-        if not transaction.quote:
+        if not transaction.quote_id:
+            # Both reads stay off the event loop on purpose. A custody integration is free to
+            # refresh_from_db() the transaction it was handed, which drops Django's cached
+            # relations, and a lazy load here would raise SynchronousOnlyOperation after the
+            # payment has already settled on Stellar.
+            significant_decimals = await sync_to_async(
+                lambda: transaction.asset.significant_decimals
+            )()
             transaction.amount_out = round(
                 Decimal(transaction.amount_in) - Decimal(transaction.amount_fee),
-                transaction.asset.significant_decimals,
+                significant_decimals,
             )
         await sync_to_async(transaction.save)()
         logger.info(f"transaction {transaction.id} completed.")
