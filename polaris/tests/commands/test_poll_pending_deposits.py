@@ -2,7 +2,9 @@ import asyncio
 import datetime
 from collections import defaultdict
 from multiprocessing.dummy import Process
-from unittest.mock import patch, Mock, MagicMock
+from unittest.mock import PropertyMock, patch, Mock, MagicMock
+
+from polaris.integrations import registered_custody_integration as rci
 from decimal import Decimal
 
 import pytest
@@ -843,6 +845,86 @@ async def test_check_rails_for_ready_transactions():
         await sync_to_async(transaction.refresh_from_db)()
         assert transaction.queue == SUBMIT_TRANSACTION_QUEUE
         assert transaction.status == Transaction.STATUS.pending_anchor
+
+
+@pytest.mark.django_db(transaction=True)
+async def test_check_rails_submits_an_existing_account_without_account_creation():
+    """An anchor that cannot create accounts must still submit to accounts that exist.
+
+    check_rails_for_ready_transactions used to return early whenever
+    account_creation_supported was False, parking every ready deposit as pending_user without
+    ever looking at the account. A non-custodial anchor, whose customers fund and trust their
+    own accounts, could therefore never advance a deposit. The early return also performed a
+    synchronous queryset update inside the coroutine, which raises SynchronousOnlyOperation on
+    Django versions that guard async-unsafe database access.
+    """
+
+    usd = await sync_to_async(Asset.objects.create)(
+        code="USD", issuer=Keypair.random().public_key
+    )
+    destination = Keypair.random().public_key
+    transaction = await sync_to_async(Transaction.objects.create)(
+        asset=usd,
+        stellar_account=destination,
+        to_address=destination,
+        status=Transaction.STATUS.pending_user_transfer_start,
+        kind=Transaction.KIND.deposit,
+        amount_in=100,
+    )
+    with patch(f"{test_module}.rri.poll_pending_deposits") as mock_poll_pending_deposits:
+        mock_poll_pending_deposits.return_value = [transaction]
+        qa = PolarisQueueAdapter([SUBMIT_TRANSACTION_QUEUE])
+        with patch.object(
+            type(rci), "account_creation_supported", PropertyMock(return_value=False)
+        ), patch(
+            f"{test_module}.get_account_obj_async", new_callable=AsyncMock
+        ) as get_account_obj:
+            get_account_obj.return_value = (
+                None,
+                {"balances": [{"asset_code": usd.code, "asset_issuer": usd.issuer}]},
+            )
+            await ProcessPendingDeposits.check_rails_for_ready_transactions(qa)
+
+        queued_task = await qa.get_transaction("", SUBMIT_TRANSACTION_QUEUE)
+        assert queued_task == transaction
+        await sync_to_async(transaction.refresh_from_db)()
+        assert transaction.status == Transaction.STATUS.pending_anchor
+
+
+@pytest.mark.django_db(transaction=True)
+async def test_check_rails_parks_a_missing_account_without_account_creation():
+    """Without account creation, a destination that does not exist waits for funding."""
+
+    usd = await sync_to_async(Asset.objects.create)(
+        code="USD", issuer=Keypair.random().public_key
+    )
+    destination = Keypair.random().public_key
+    transaction = await sync_to_async(Transaction.objects.create)(
+        asset=usd,
+        stellar_account=destination,
+        to_address=destination,
+        status=Transaction.STATUS.pending_user_transfer_start,
+        kind=Transaction.KIND.deposit,
+        amount_in=100,
+    )
+    with patch(f"{test_module}.rri.poll_pending_deposits") as mock_poll_pending_deposits:
+        mock_poll_pending_deposits.return_value = [transaction]
+        qa = PolarisQueueAdapter([SUBMIT_TRANSACTION_QUEUE])
+        with patch.object(
+            type(rci), "account_creation_supported", PropertyMock(return_value=False)
+        ), patch(
+            f"{test_module}.get_account_obj_async", new_callable=AsyncMock
+        ) as get_account_obj:
+            get_account_obj.side_effect = RuntimeError("account not found")
+            await ProcessPendingDeposits.check_rails_for_ready_transactions(qa)
+
+        assert qa.queues[SUBMIT_TRANSACTION_QUEUE].empty() is True
+        await sync_to_async(transaction.refresh_from_db)()
+        assert transaction.status == Transaction.STATUS.pending_user
+        assert (
+            transaction.submission_status
+            == Transaction.SUBMISSION_STATUS.pending_funding
+        )
 
 
 @pytest.mark.django_db(transaction=True)
