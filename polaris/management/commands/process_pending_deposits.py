@@ -664,10 +664,17 @@ class ProcessPendingDeposits:
         transaction.status_message = None
         transaction.queue = None
         transaction.queued_at = None
-        if not transaction.quote:
+        if not transaction.quote_id:
+            # Both reads stay off the event loop on purpose. A custody integration is free to
+            # refresh_from_db() the transaction it was handed, which drops Django's cached
+            # relations, and a lazy load here would raise SynchronousOnlyOperation after the
+            # payment has already settled on Stellar.
+            significant_decimals = await sync_to_async(
+                lambda: transaction.asset.significant_decimals
+            )()
             transaction.amount_out = round(
                 Decimal(transaction.amount_in) - Decimal(transaction.amount_fee),
-                transaction.asset.significant_decimals,
+                significant_decimals,
             )
         await sync_to_async(transaction.save)()
         logger.info(f"transaction {transaction.id} completed.")

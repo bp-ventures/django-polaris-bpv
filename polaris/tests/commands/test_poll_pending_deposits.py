@@ -1093,6 +1093,84 @@ async def test_handle_successful_deposit():
 
 
 @pytest.mark.django_db(transaction=True)
+async def test_handle_successful_deposit_with_cleared_relation_cache():
+    """A custody integration may hand the transaction back with its relations dropped.
+
+    submit_deposit_transaction() runs in a thread, so an integration is free to call
+    refresh_from_db() on the transaction it was given, and Django clears every cached related
+    object when it does. handle_successful_deposit then runs back on the event loop, where a
+    lazy read of transaction.quote or transaction.asset is a synchronous query and Django
+    raises SynchronousOnlyOperation. The payment has already settled on Stellar at that point,
+    so the anchor records a completed payment as an error.
+    """
+
+    usd = await sync_to_async(Asset.objects.create)(
+        code="USD", issuer=Keypair.random().public_key, significant_decimals=2
+    )
+    destination = Keypair.random().public_key
+    quote = await sync_to_async(Quote.objects.create)(
+        stellar_account=destination,
+        type=Quote.TYPE.firm,
+        sell_asset="iso4217:USD",
+        buy_asset=f"stellar:USD:{usd.issuer}",
+        sell_amount=Decimal("100"),
+        buy_amount=Decimal("100"),
+        price=Decimal("1"),
+    )
+    transaction = await sync_to_async(Transaction.objects.create)(
+        asset=usd,
+        quote=quote,
+        stellar_account=destination,
+        to_address=destination,
+        status=Transaction.STATUS.pending_anchor,
+        submission_status=Transaction.SUBMISSION_STATUS.unblocked,
+        kind=getattr(Transaction.KIND, "deposit-exchange"),
+        amount_in=100,
+        amount_fee=1,
+        amount_out=100,
+    )
+    transaction._state.fields_cache.clear()
+
+    await ProcessPendingDeposits.handle_successful_deposit(
+        transaction_json={"paging_token": "123", "id": "456"}, transaction=transaction
+    )
+
+    await sync_to_async(transaction.refresh_from_db)()
+    assert transaction.status == Transaction.STATUS.completed
+    assert transaction.stellar_transaction_id == "456"
+    assert transaction.amount_out == 100
+
+
+@pytest.mark.django_db(transaction=True)
+async def test_handle_successful_deposit_without_quote_and_cleared_relation_cache():
+    """The no-quote branch reads asset.significant_decimals, and must not read it lazily."""
+
+    usd = await sync_to_async(Asset.objects.create)(
+        code="USD", issuer=Keypair.random().public_key, significant_decimals=2
+    )
+    destination = Keypair.random().public_key
+    transaction = await sync_to_async(Transaction.objects.create)(
+        asset=usd,
+        stellar_account=destination,
+        to_address=destination,
+        status=Transaction.STATUS.pending_anchor,
+        submission_status=Transaction.SUBMISSION_STATUS.unblocked,
+        kind=Transaction.KIND.deposit,
+        amount_in=100,
+        amount_fee=1,
+    )
+    transaction._state.fields_cache.clear()
+
+    await ProcessPendingDeposits.handle_successful_deposit(
+        transaction_json={"paging_token": "123", "id": "456"}, transaction=transaction
+    )
+
+    await sync_to_async(transaction.refresh_from_db)()
+    assert transaction.status == Transaction.STATUS.completed
+    assert transaction.amount_out == 99
+
+
+@pytest.mark.django_db(transaction=True)
 async def test_handle_successful_account_creation():
     usd = await sync_to_async(Asset.objects.create)(
         code="USD", issuer=Keypair.random().public_key
